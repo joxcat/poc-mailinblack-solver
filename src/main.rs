@@ -36,6 +36,8 @@ use image::{Rgb, RgbImage};
 use rayon::iter::ParallelBridge;
 use rayon::prelude::ParallelIterator;
 use std::fs::read_dir;
+use std::path::Path;
+use std::ffi::CStr;
 
 #[derive(Debug, Copy, Clone)]
 struct Color {
@@ -109,11 +111,15 @@ fn main() -> Result<()> {
 
             filter_image_rgb(&path, dest_path, FROM_RANGE, TO_RANGE)?;
 
-            let mut lt = leptess::LepTess::new(None, "fra").unwrap();
-            lt.set_image(dest_path)?;
-            lt.set_source_resolution(70);
+            let mut api = leptess::tesseract::TessApi::new(None, "fra")?;
+            let pix = leptess::leptonica::pix_read(Path::new(dest_path))?;
 
-            println!("{}", lt.get_utf8_text().unwrap());
+            api.set_image(&pix);
+            api.set_source_resolution(70);
+
+            api.raw.set_variable(leptess::Variable::TesseditPagesegMode.as_cstr(), CStr::from_bytes_with_nul(b"6\0")?)?;
+
+            println!("{}", api.get_utf8_text()?);
         }
     }
 
